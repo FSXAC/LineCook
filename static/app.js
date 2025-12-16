@@ -555,6 +555,11 @@
       for (let i = 0; i < days.length; i++) {
         const line = document.createElement('div');
         line.className = 'gantt-minor-line';
+        const d = parseISODate(days[i]);
+        if (d) {
+          const day = d.getDay();
+          if (day === 0 || day === 6) line.classList.add('weekend');
+        }
         minor.appendChild(line);
       }
 
@@ -618,6 +623,7 @@
   }
 
   function commitEdit(taskId, newTitle) {
+    if (state.editingId !== taskId) return;
     state.editingId = null;
     if (!newTitle.trim()) {
       // If empty, delete it (cleanup).
