@@ -372,21 +372,25 @@
       const title = document.createElement('div');
       title.className = 'title' + (task.done ? ' done' : '');
       title.textContent = task.title || '';
+      title.title = 'Click to edit';
+      title.addEventListener('click', (e) => {
+        e.stopPropagation();
+        state.selectedId = task.id;
+        state.editingId = task.id;
+        render();
+      });
 
       const badge = document.createElement('div');
       badge.className = 'badge' + (warn ? ' warn' : '');
       badge.textContent = formatEffBadge(eff);
 
-      row.addEventListener('click', () => {
-        state.selectedId = task.id;
-        state.editingId = null;
-        render();
-      });
-
-      row.addEventListener('dblclick', () => {
-        state.selectedId = task.id;
-        state.editingId = task.id;
-        render();
+      const delBtn = document.createElement('div');
+      delBtn.className = 'del-btn';
+      delBtn.textContent = '×';
+      delBtn.title = 'Delete task';
+      delBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        deleteSubtree(task.id);
       });
 
       row.append(indent, caret, checkbox);
@@ -410,13 +414,13 @@
         input.addEventListener('blur', () => {
           commitEdit(task.id, input.value);
         });
-        row.append(input, badge);
+        row.append(input, badge, delBtn);
         requestAnimationFrame(() => {
           input.focus();
           input.setSelectionRange(input.value.length, input.value.length);
         });
       } else {
-        row.append(title, badge);
+        row.append(title, badge, delBtn);
       }
 
       root.appendChild(row);
@@ -569,6 +573,11 @@
 
   function commitEdit(taskId, newTitle) {
     state.editingId = null;
+    if (!newTitle.trim()) {
+      // If empty, delete it (cleanup).
+      deleteSubtree(taskId);
+      return;
+    }
     const parsed = parseDatesFromTitle(newTitle);
     patchTask(taskId, { title: newTitle, start: parsed.start, end: parsed.end });
   }

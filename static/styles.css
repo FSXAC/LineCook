@@ -142,6 +142,11 @@ html, body {
   text-overflow: ellipsis;
 }
 
+.title:hover {
+  background: #f9f9f9;
+  cursor: text;
+}
+
 .title.done {
   color: var(--muted);
   text-decoration: line-through;
@@ -163,6 +168,23 @@ html, body {
 
 .badge.warn {
   color: var(--warn);
+}
+
+.del-btn {
+  width: 20px;
+  text-align: center;
+  color: transparent;
+  cursor: pointer;
+  user-select: none;
+  font-weight: bold;
+}
+
+.task-row:hover .del-btn {
+  color: var(--muted);
+}
+
+.del-btn:hover {
+  color: var(--warn) !important;
 }
 
 /* Gantt */
