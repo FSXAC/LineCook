@@ -1,0 +1,108 @@
+{
+  "revision": 19,
+  "updatedAt": "2025-12-16T21:33:46+00:00",
+  "doc": {
+    "tasks": [
+      {
+        "id": "t1",
+        "title": "Example task 2025-12-16 3d",
+        "done": false,
+        "collapsed": false,
+        "parentId": null,
+        "order": 0,
+        "start": "2025-12-16",
+        "end": "2025-12-19"
+      },
+      {
+        "id": "t13796cd3dfb86819b29143c73",
+        "title": "Testing new task today-2025-12-31",
+        "done": false,
+        "collapsed": false,
+        "parentId": null,
+        "order": 1,
+        "start": "2025-12-16",
+        "end": "2025-12-31"
+      },
+      {
+        "id": "tec123bd8c7f6b819b29147a13",
+        "title": "",
+        "done": false,
+        "collapsed": false,
+        "parentId": null,
+        "order": 2,
+        "start": null,
+        "end": null
+      },
+      {
+        "id": "t1308ac681fa63819b291456c1",
+        "title": "",
+        "done": false,
+        "collapsed": false,
+        "parentId": null,
+        "order": 3,
+        "start": null,
+        "end": null
+      },
+      {
+        "id": "t2",
+        "title": "Subtask 2025-12-18",
+        "done": false,
+        "collapsed": false,
+        "parentId": "t1",
+        "order": 0,
+        "start": "2025-12-18",
+        "end": "2025-12-18"
+      },
+      {
+        "id": "tb41b869602dd219b2914cd20",
+        "title": "Management 3d",
+        "done": false,
+        "collapsed": false,
+        "parentId": "t2",
+        "order": 0,
+        "start": null,
+        "end": null
+      },
+      {
+        "id": "te320fb4c46513819b29155627",
+        "title": "",
+        "done": false,
+        "collapsed": false,
+        "parentId": "t2",
+        "order": 1,
+        "start": null,
+        "end": null
+      },
+      {
+        "id": "t1f4145828ee7f19b29152b3e",
+        "title": "",
+        "done": false,
+        "collapsed": false,
+        "parentId": "t2",
+        "order": 2,
+        "start": null,
+        "end": null
+      },
+      {
+        "id": "t5a42b4d43b8fe819b2914f974",
+        "title": "",
+        "done": false,
+        "collapsed": false,
+        "parentId": "t2",
+        "order": 3,
+        "start": null,
+        "end": null
+      },
+      {
+        "id": "t8444edb89af9b819b2914e380",
+        "title": "",
+        "done": false,
+        "collapsed": false,
+        "parentId": "t2",
+        "order": 4,
+        "start": null,
+        "end": null
+      }
+    ]
+  }
+}

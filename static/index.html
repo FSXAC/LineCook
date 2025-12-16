@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>LineCook</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <div class="app" id="app">
+      <header class="topbar">
+        <div class="brand">LineCook</div>
+        <div class="status" id="status">loading…</div>
+      </header>
+
+      <main class="split">
+        <section class="pane pane-left">
+          <div class="pane-header">Tasks</div>
+          <div class="pane-body" id="outlineScroll" tabindex="0" aria-label="Task outline"></div>
+        </section>
+
+        <section class="pane pane-right">
+          <div class="pane-header gantt-header" id="ganttHeader"></div>
+          <div class="pane-body gantt-body" id="ganttScroll" tabindex="0" aria-label="Gantt"></div>
+        </section>
+      </main>
+    </div>
+
+    <script src="/static/app.js" defer></script>
+  </body>
+</html>
