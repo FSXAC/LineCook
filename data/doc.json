@@ -1,7 +1,28 @@
 {
-  "revision": 32,
-  "updatedAt": "2025-12-16T21:38:20+00:00",
+  "revision": 77,
+  "updatedAt": "2025-12-16T22:00:05+00:00",
   "doc": {
-    "tasks": []
+    "tasks": [
+      {
+        "id": "t1",
+        "title": "BRC Milestone 2",
+        "done": false,
+        "collapsed": false,
+        "parentId": null,
+        "order": 0,
+        "start": "2025-12-16",
+        "end": "2026-01-01"
+      },
+      {
+        "id": "t0f8cea3971afa19b29272d17",
+        "title": "BRC M2 RTL (STDEL-2072)",
+        "done": false,
+        "collapsed": false,
+        "parentId": "t1",
+        "order": 0,
+        "start": "2025-12-16",
+        "end": "2025-12-31"
+      }
+    ]
   }
 }

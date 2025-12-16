@@ -79,6 +79,19 @@
     return Math.round((bb.getTime() - aa.getTime()) / DAY_MS);
   }
 
+  function getWeekNumber(d) {
+    // Copy date so don't modify original
+    d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    // Set to nearest Thursday: current date + 4 - current day number
+    // Make Sunday's day number 7
+    d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+    // Get first day of year
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    // Calculate full weeks to nearest Thursday
+    const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+    return weekNo;
+  }
+
   /**
    * Parse dates from a task title.
    * Supports:
@@ -87,17 +100,25 @@
    * 3) YYYY-MM-DD - YYYY-MM-DD or YYYY-MM-DD to YYYY-MM-DD
    * 4) YYYY-MM-DD 3d (end = start + 3 days)
    *
-   * Returns explicit start/end as ISO strings or null.
+   * Returns explicit start/end as ISO strings or null, plus cleaned title.
    */
   function parseDatesFromTitle(title) {
-    const t = title;
+    let t = title;
+    let start = null;
+    let end = null;
+    let cleaned = title;
 
     // today - YYYY-MM-DD
     {
       const m = t.match(/\btoday\b\s*[-–—]\s*(\d{4}-\d{2}-\d{2})\b/i);
       if (m) {
         const endDt = parseISODate(m[1]);
-        if (endDt) return { start: todayISO(), end: toISODate(endDt) };
+        if (endDt) {
+          start = todayISO();
+          end = toISODate(endDt);
+          cleaned = t.replace(m[0], '').trim();
+          return { start, end, cleaned };
+        }
       }
     }
 
@@ -109,7 +130,10 @@
         const n = Number(m[2]);
         if (startDt && Number.isFinite(n)) {
           const endDt = addDays(startDt, n);
-          return { start: toISODate(startDt), end: toISODate(endDt) };
+          start = toISODate(startDt);
+          end = toISODate(endDt);
+          cleaned = t.replace(m[0], '').trim();
+          return { start, end, cleaned };
         }
       }
     }
@@ -120,7 +144,12 @@
       if (m) {
         const a = parseISODate(m[1]);
         const b = parseISODate(m[2]);
-        if (a && b) return { start: toISODate(a), end: toISODate(b) };
+        if (a && b) {
+          start = toISODate(a);
+          end = toISODate(b);
+          cleaned = t.replace(m[0], '').trim();
+          return { start, end, cleaned };
+        }
       }
     }
 
@@ -129,11 +158,16 @@
       const m = t.match(/\b(\d{4}-\d{2}-\d{2})\b/);
       if (m) {
         const d = parseISODate(m[1]);
-        if (d) return { start: toISODate(d), end: toISODate(d) };
+        if (d) {
+          start = toISODate(d);
+          end = toISODate(d);
+          cleaned = t.replace(m[0], '').trim();
+          return { start, end, cleaned };
+        }
       }
     }
 
-    return { start: null, end: null };
+    return { start: null, end: null, cleaned: title };
   }
 
   function sortTasksInPlace(tasks) {
@@ -393,6 +427,16 @@
         deleteSubtree(task.id);
       });
 
+      row.addEventListener('click', () => {
+        state.selectedId = task.id;
+        // If clicking row background (not title/checkbox), just select, don't edit.
+        // Exception: if title is empty, start editing so it's accessible.
+        if (state.editingId !== task.id) {
+          state.editingId = !task.title ? task.id : null;
+          render();
+        }
+      });
+
       row.append(indent, caret, checkbox);
 
       if (state.editingId === task.id) {
@@ -470,7 +514,9 @@
     for (const w of weeks) {
       const cell = document.createElement('div');
       cell.className = 'gantt-week-cell';
-      cell.textContent = `week of ${w}`;
+      const dt = parseISODate(w);
+      const weekNum = dt ? getWeekNumber(dt) : '';
+      cell.textContent = `W${weekNum}`;
       weekRow.appendChild(cell);
     }
 
@@ -579,7 +625,11 @@
       return;
     }
     const parsed = parseDatesFromTitle(newTitle);
-    patchTask(taskId, { title: newTitle, start: parsed.start, end: parsed.end });
+    if (parsed.start) {
+      patchTask(taskId, { title: parsed.cleaned, start: parsed.start, end: parsed.end });
+    } else {
+      patchTask(taskId, { title: newTitle });
+    }
   }
 
   function patchTask(taskId, patch) {
@@ -604,11 +654,43 @@
 
     if (!byId.has(taskId)) return;
     walk(taskId);
-    state.tasks = state.tasks.filter(t => !toDelete.includes(t.id));
-    if (state.selectedId && toDelete.includes(state.selectedId)) {
-      state.selectedId = null;
-      state.editingId = null;
+
+    const remaining = state.tasks.filter(t => !toDelete.includes(t.id));
+
+    if (remaining.length === 0) {
+      // If deleting everything, ensure we keep at least one task.
+      if (state.tasks.length === 1 && state.tasks[0].id === taskId) {
+        // If it was the only task, just clear it.
+        const t = state.tasks[0];
+        t.title = '';
+        t.done = false;
+        t.start = null;
+        t.end = null;
+        t.collapsed = false;
+      } else {
+        // Otherwise reset to a fresh task.
+        const id = uuid();
+        state.tasks = [{
+          id,
+          title: '',
+          done: false,
+          collapsed: false,
+          parentId: null,
+          order: 0,
+          start: null,
+          end: null,
+        }];
+        state.selectedId = id;
+        state.editingId = null;
+      }
+    } else {
+      state.tasks = remaining;
+      if (state.selectedId && toDelete.includes(state.selectedId)) {
+        state.selectedId = null;
+        state.editingId = null;
+      }
     }
+
     normalizeOrders();
     scheduleSave();
     render();
