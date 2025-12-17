@@ -2,6 +2,11 @@
 
 A minimalist single-page to-do editor with a built-in Gantt chart.
 
+
+https://github.com/user-attachments/assets/c4d2a998-d004-457e-bed1-7caf9663bd7e
+
+
+
 ## Stack (dead-simple)
 
 - Browser: plain HTML/CSS/JavaScript (no React, no build step)
