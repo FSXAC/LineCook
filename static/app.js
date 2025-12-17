@@ -616,7 +616,10 @@
       cell.className = 'gantt-week-cell';
       const dt = parseISODate(w);
       const weekNum = dt ? getWeekNumber(dt) : '';
-      cell.textContent = `W${weekNum}`;
+
+      // TODO: Handle year boundaries?
+      // TODO: offset +1 depending on locale?
+      cell.textContent = `W${weekNum + 1}`;
       weekRow.appendChild(cell);
     }
 
