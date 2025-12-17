@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import mimetypes
 import os
+import socket
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -167,6 +168,13 @@ class Handler(BaseHTTPRequestHandler):
         _write_json_atomic(DOC_PATH, next_payload)
         self._send_json(200, next_payload)
 
+    def _handle_get_inprogress(self) -> None:
+        _ensure_seed_doc()
+        payload = _read_json(DOC_PATH)
+        tasks = payload.get("doc", {}).get("tasks", [])
+        inprogress = [t for t in tasks if not t.get("done")]
+        self._send_json(200, inprogress)
+
     def do_GET(self) -> None:
         try:
             parsed = urlparse(self.path)
@@ -178,6 +186,10 @@ class Handler(BaseHTTPRequestHandler):
 
             if path == "/api/doc":
                 self._handle_get_doc()
+                return
+
+            if path == "/api/tasks/inprogress":
+                self._handle_get_inprogress()
                 return
 
             if path == "/":
@@ -224,8 +236,16 @@ class Handler(BaseHTTPRequestHandler):
 def main() -> None:
     _ensure_seed_doc()
     port = int(os.environ.get("PORT", "8000"))
-    server = ThreadingHTTPServer(("127.0.0.1", port), Handler)
-    print(f"LineCook running at http://127.0.0.1:{port}")
+
+    # Get hostname for display
+    hostname = socket.gethostname()
+    fqdn = socket.getfqdn()
+
+    server = ThreadingHTTPServer(("0.0.0.0", port), Handler)
+    print(f"LineCook running at:")
+    print(f"  http://localhost:{port}")
+    print(f"  http://{hostname}:{port}")
+    print(f"  http://{fqdn}:{port}")
     server.serve_forever()
 
 
