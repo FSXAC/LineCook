@@ -170,6 +170,49 @@
     return { start: null, end: null, cleaned: title };
   }
 
+  function sortSiblingsByDate(parentId) {
+    const effMap = computeEffectiveDates(state.tasks);
+    const siblings = state.tasks.filter(t => t.parentId === parentId);
+
+    siblings.sort((a, b) => {
+      const ea = effMap.get(a.id);
+      const eb = effMap.get(b.id);
+      const startA = ea ? ea.effectiveStart : null;
+      const startB = eb ? eb.effectiveStart : null;
+      const endA = ea ? ea.effectiveEnd : null;
+      const endB = eb ? eb.effectiveEnd : null;
+
+      // Sort by start date (earliest first), then end date, then original order.
+      // Tasks with no start date go to the bottom.
+      if (startA && !startB) return -1;
+      if (!startA && startB) return 1;
+      if (startA && startB) {
+        if (startA !== startB) return startA.localeCompare(startB);
+      }
+
+      if (endA && !endB) return -1;
+      if (!endA && endB) return 1;
+      if (endA && endB) {
+        if (endA !== endB) return endA.localeCompare(endB);
+      }
+
+      return a.order - b.order;
+    });
+
+    let changed = false;
+    siblings.forEach((t, i) => {
+      if (t.order !== i) {
+        t.order = i;
+        changed = true;
+      }
+    });
+
+    if (changed) {
+      scheduleSave();
+      render();
+    }
+  }
+
   function sortTasksInPlace(tasks) {
     tasks.sort((a, b) => {
       if (a.parentId !== b.parentId) return (a.parentId || '').localeCompare(b.parentId || '');
@@ -299,7 +342,7 @@
         }
       }
 
-      const rec = { effectiveStart, effectiveEnd, warnInvalid, warnInconsistent };
+      const rec = { effectiveStart, effectiveEnd, warnInvalid, warnInconsistent, childMinStart, childMaxEnd };
       eff.set(taskId, rec);
       return rec;
     }
@@ -335,8 +378,8 @@
 
     const rs = parseISODate(minStart);
     const re = parseISODate(maxEnd);
-    const paddedStart = addDays(startOfWeek(rs), -7);
-    const paddedEnd = addDays(endOfWeek(re), 7);
+    const paddedStart = startOfWeek(rs);
+    const paddedEnd = endOfWeek(re);
 
     const days = [];
     for (let d = new Date(paddedStart); d <= paddedEnd; d = addDays(d, 1)) {
@@ -350,6 +393,13 @@
     }
 
     return { empty: false, paddedStart: toISODate(paddedStart), paddedEnd: toISODate(paddedEnd), days, weeks };
+  }
+
+  function setHover(taskId, active) {
+    const outlineRow = elOutlineScroll.querySelector(`.task-row[data-id="${CSS.escape(taskId)}"]`);
+    const ganttRow = elGanttScroll.querySelector(`.gantt-row[data-id="${CSS.escape(taskId)}"]`);
+    if (outlineRow) outlineRow.classList.toggle('hovered', active);
+    if (ganttRow) ganttRow.classList.toggle('hovered', active);
   }
 
   function render() {
@@ -379,6 +429,8 @@
       const row = document.createElement('div');
       row.className = 'task-row' + (task.id === state.selectedId ? ' selected' : '') + (warn ? ' warn' : '');
       row.dataset.id = task.id;
+      row.addEventListener('mouseenter', () => setHover(task.id, true));
+      row.addEventListener('mouseleave', () => setHover(task.id, false));
 
       const indent = document.createElement('div');
       indent.className = 'indent';
@@ -429,8 +481,6 @@
 
       row.addEventListener('click', () => {
         state.selectedId = task.id;
-        // If clicking row background (not title/checkbox), just select, don't edit.
-        // Exception: if title is empty, start editing so it's accessible.
         if (state.editingId !== task.id) {
           state.editingId = !task.title ? task.id : null;
           render();
@@ -446,25 +496,72 @@
         input.addEventListener('keydown', (e) => {
           if (e.key === 'Enter') {
             e.preventDefault();
+            e.stopPropagation();
             commitEdit(task.id, input.value);
-          }
-          if (e.key === 'Escape') {
+            addTaskBelow(task.id);
+          } else if (e.key === 'ArrowUp') {
             e.preventDefault();
+            e.stopPropagation();
+            commitEdit(task.id, input.value);
+            selectRelative(-1);
+          } else if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            e.stopPropagation();
+            commitEdit(task.id, input.value);
+            selectRelative(1);
+          } else if (e.key === 'Tab') {
+            e.preventDefault();
+            e.stopPropagation();
+            commitEdit(task.id, input.value);
+            state.editingId = task.id;
+            if (e.shiftKey) outdentTask(task.id);
+            else indentTask(task.id);
+          } else if (e.key === 'Escape') {
+            e.preventDefault();
+            e.stopPropagation();
             state.editingId = null;
             render();
           }
-          // Let Tab be handled globally.
         });
         input.addEventListener('blur', () => {
           commitEdit(task.id, input.value);
         });
-        row.append(input, badge, delBtn);
+        row.append(input);
+      } else {
+        row.append(title);
+      }
+
+      row.append(badge);
+
+      if (eff && eff.warnInconsistent) {
+        const fixBtn = document.createElement('div');
+        fixBtn.textContent = '🔧';
+        fixBtn.title = 'Fix dates';
+        fixBtn.style.cursor = 'pointer';
+        fixBtn.style.marginRight = '5px';
+        fixBtn.style.fontSize = '12px';
+        fixBtn.style.color = 'var(--muted)';
+        fixBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const { cleaned } = parseDatesFromTitle(task.title);
+          const s = eff.childMinStart;
+          const en = eff.childMaxEnd;
+          if (s && en) {
+             const newTitle = cleaned.trim() + ' ' + s + ' - ' + en;
+             patchTask(task.id, { title: newTitle, start: s, end: en });
+          }
+        });
+        row.append(fixBtn);
+      }
+
+      row.append(delBtn);
+
+      if (state.editingId === task.id) {
+        const input = row.querySelector('input');
         requestAnimationFrame(() => {
           input.focus();
           input.setSelectionRange(input.value.length, input.value.length);
         });
-      } else {
-        row.append(title, badge, delBtn);
       }
 
       root.appendChild(row);
@@ -547,6 +644,9 @@
 
       const row = document.createElement('div');
       row.className = 'gantt-row' + (warn ? ' warn' : '');
+      row.dataset.id = task.id;
+      row.addEventListener('mouseenter', () => setHover(task.id, true));
+      row.addEventListener('mouseleave', () => setHover(task.id, false));
 
       // Minor daily grid
       const minor = document.createElement('div');
@@ -630,12 +730,18 @@
       deleteSubtree(taskId);
       return;
     }
+
+    const task = state.tasks.find(t => t.id === taskId);
+    const parentId = task ? task.parentId : null;
+
     const parsed = parseDatesFromTitle(newTitle);
     if (parsed.start) {
       patchTask(taskId, { title: parsed.cleaned, start: parsed.start, end: parsed.end });
     } else {
       patchTask(taskId, { title: newTitle });
     }
+
+    sortSiblingsByDate(parentId);
   }
 
   function patchTask(taskId, patch) {
@@ -897,29 +1003,25 @@
   }
 
   function onKeyDown(e) {
-    if (!state.selectedId) return;
+    // If editing, let the input listener handle it (or default behavior).
+    if (state.editingId) return;
 
-    // Let the input handle most keys while editing.
-    if (state.editingId) {
-      // Still allow Shift+Tab to outdent and Tab to indent while editing.
-      if (e.key === 'Tab') {
-        e.preventDefault();
-        if (e.shiftKey) outdentTask(state.selectedId);
-        else indentTask(state.selectedId);
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const hovered = document.querySelector('.task-row:hover');
+      const targetId = hovered ? hovered.dataset.id : state.selectedId;
+      if (targetId) {
+        if (e.shiftKey) outdentTask(targetId);
+        else indentTask(targetId);
       }
       return;
     }
 
+    if (!state.selectedId) return;
+
     if (e.key === 'Enter') {
       e.preventDefault();
       addTaskBelow(state.selectedId);
-      return;
-    }
-
-    if (e.key === 'Tab') {
-      e.preventDefault();
-      if (e.shiftKey) outdentTask(state.selectedId);
-      else indentTask(state.selectedId);
       return;
     }
 
