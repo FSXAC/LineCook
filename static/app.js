@@ -1,5 +1,5 @@
 (() => {
-  /** @typedef {{id:string,title:string,done:boolean,collapsed:boolean,parentId:string|null,order:number,start:string|null,end:string|null}} Task */
+  /** @typedef {{id:string,title:string,status:'todo'|'doing'|'done',collapsed:boolean,parentId:string|null,order:number,start:string|null,end:string|null}} Task */
 
   const DAY_MS = 24 * 60 * 60 * 1000;
   const DAY_WIDTH_PX = 20; // keep in sync with --day-w
@@ -448,16 +448,16 @@
       });
 
       const checkbox = document.createElement('div');
-      checkbox.className = 'checkbox' + (task.done ? ' done' : '');
-      checkbox.textContent = task.done ? 'x' : '';
-      checkbox.title = 'Toggle done';
+      checkbox.className = 'checkbox ' + task.status;
+      checkbox.textContent = task.status === 'done' ? 'x' : (task.status === 'doing' ? '/' : '');
+      checkbox.title = 'Toggle status';
       checkbox.addEventListener('click', (e) => {
         e.stopPropagation();
-        patchTask(task.id, { done: !task.done });
+        toggleDone(task.id);
       });
 
       const title = document.createElement('div');
-      title.className = 'title' + (task.done ? ' done' : '');
+      title.className = 'title ' + task.status;
       title.textContent = task.title || '';
       title.title = 'Click to edit';
       title.addEventListener('click', (e) => {
@@ -697,7 +697,7 @@
           if (widthDays < 1) widthDays = 1;
 
           const bar = document.createElement('div');
-          bar.className = 'bar' + (task.done ? ' done' : '') + (warn ? ' warn' : '');
+          bar.className = 'bar ' + task.status + (warn ? ' warn' : '');
           bar.style.left = `${leftDays * DAY_WIDTH_PX}px`;
           bar.style.width = `${widthDays * DAY_WIDTH_PX}px`;
           row.appendChild(bar);
@@ -781,7 +781,7 @@
         // If it was the only task, just clear it.
         const t = state.tasks[0];
         t.title = '';
-        t.done = false;
+        t.status = 'todo';
         t.start = null;
         t.end = null;
         t.collapsed = false;
@@ -791,7 +791,7 @@
         state.tasks = [{
           id,
           title: '',
-          done: false,
+          status: 'todo',
           collapsed: false,
           parentId: null,
           order: 0,
@@ -909,7 +909,7 @@
     state.tasks.push({
       id,
       title: '',
-      done: false,
+      status: 'todo',
       collapsed: false,
       parentId,
       order: currentIdx + 1,
@@ -927,7 +927,11 @@
   function toggleDone(taskId) {
     const t = state.tasks.find(x => x.id === taskId);
     if (!t) return;
-    t.done = !t.done;
+    
+    if (t.status === 'todo') t.status = 'doing';
+    else if (t.status === 'doing') t.status = 'done';
+    else t.status = 'todo';
+
     scheduleSave();
     render();
   }
@@ -992,7 +996,11 @@
 
       // Backfill required fields for older docs.
       for (const t of state.tasks) {
-        if (typeof t.done !== 'boolean') t.done = false;
+        if (typeof t.done === 'boolean') {
+          t.status = t.done ? 'done' : 'todo';
+          delete t.done;
+        }
+        if (!t.status) t.status = 'todo';
         if (typeof t.collapsed !== 'boolean') t.collapsed = false;
         if (!('start' in t)) t.start = null;
         if (!('end' in t)) t.end = null;

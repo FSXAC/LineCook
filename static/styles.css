@@ -141,6 +141,11 @@ html, body {
   border-color: var(--accent);
 }
 
+.checkbox.doing {
+  border-color: var(--muted);
+  color: var(--muted);
+}
+
 .title {
   flex: 1;
   min-width: 0;
@@ -157,6 +162,11 @@ html, body {
 .title.done {
   color: var(--muted);
   text-decoration: line-through;
+}
+
+.title.doing {
+  color: var(--fg);
+  font-style: italic;
 }
 
 .title-input {
@@ -284,6 +294,17 @@ html, body {
   top: 6px;
   height: calc(var(--row-h) - 12px);
   background: var(--accent);
+}
+
+.bar.doing {
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--accent),
+    var(--accent) 2px,
+    #ffffff 2px,
+    #ffffff 4px
+  );
+  border: 1px solid var(--accent);
 }
 
 .bar.done {
