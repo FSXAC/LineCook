@@ -7,11 +7,12 @@
   /** @type {{revision:number, updatedAt:string, doc:{tasks:Task[]}} | null} */
   let serverDoc = null;
 
-  /** @type {{ tasks: Task[], selectedId: string|null, editingId: string|null, save:{status:'loading'|'idle'|'saving'|'error'|'conflict', message:string|null} }} */
+  /** @type {{ tasks: Task[], selectedId: string|null, editingId: string|null, ignoreBlur: boolean, save:{status:'loading'|'idle'|'saving'|'error'|'conflict', message:string|null} }} */
   let state = {
     tasks: [],
     selectedId: null,
     editingId: null,
+    ignoreBlur: false,
     save: { status: 'loading', message: null },
   };
 
@@ -512,10 +513,12 @@
           } else if (e.key === 'Tab') {
             e.preventDefault();
             e.stopPropagation();
-            commitEdit(task.id, input.value);
+            state.ignoreBlur = true;
+            commitEdit(task.id, input.value, false);
             state.editingId = task.id;
             if (e.shiftKey) outdentTask(task.id);
             else indentTask(task.id);
+            state.ignoreBlur = false;
           } else if (e.key === 'Escape') {
             e.preventDefault();
             e.stopPropagation();
@@ -524,6 +527,7 @@
           }
         });
         input.addEventListener('blur', () => {
+          if (state.ignoreBlur) return;
           commitEdit(task.id, input.value);
         });
         row.append(input);
@@ -547,8 +551,7 @@
           const s = eff.childMinStart;
           const en = eff.childMaxEnd;
           if (s && en) {
-             const newTitle = cleaned.trim() + ' ' + s + ' - ' + en;
-             patchTask(task.id, { title: newTitle, start: s, end: en });
+             patchTask(task.id, { title: cleaned.trim(), start: s, end: en });
           }
         });
         row.append(fixBtn);
@@ -722,7 +725,7 @@
     }, { passive: true });
   }
 
-  function commitEdit(taskId, newTitle) {
+  function commitEdit(taskId, newTitle, shouldSort = true) {
     if (state.editingId !== taskId) return;
     state.editingId = null;
     if (!newTitle.trim()) {
@@ -741,7 +744,7 @@
       patchTask(taskId, { title: newTitle });
     }
 
-    sortSiblingsByDate(parentId);
+    if (shouldSort) sortSiblingsByDate(parentId);
   }
 
   function patchTask(taskId, patch) {
